@@ -36,7 +36,7 @@ Three rules govern everything below:
 
 ### 2. Lexicon Only
 **Trigger:** "just the words", "lexicon only", "analyze".
-**Action:** Steps 0–4, then print the candidate lexicon (Step 4 report) and stop. Nothing written.
+**Action:** Steps 0–4, then print the candidate lexicon (Step 4 report, including `Behaviour` and `Displaces`) and stop. Nothing is written unless the user asks to save the report.
 
 ### 3. Bind to Project
 **Trigger:** `--bind <project-root>`, "bind this to my repo", or a slug of an existing principles skill plus a project path.
@@ -196,6 +196,12 @@ grep -o -i -E "tracer bullet|deep module|ubiquitous language" "$FULL_TEXT_PATH" 
 ```
 A term the author uses once in passing is not a leading word. Frequency across chapters is one of the selection signals in Step 4.
 
+Counting pitfalls (seen in real runs):
+- **Phrases split across lines**: PDF text wraps mid-phrase, so a line-based `grep -o` undercounts. Count over whitespace-collapsed text (e.g. `tr -s ' 
+' ' '` or a short Python normalise) and undo end-of-line hyphenation and ligatures (ﬁ/ﬂ).
+- **Count the body only**: exclude the ToC, index, page headers and back-matter summaries, or every heading term gets inflated.
+- **ToC regex false positives**: the pattern above also matches in-text references ("Chapter 13 deals with…"). Build the chapter map from lines that contain *only* the heading (`^\s*Chapter [0-9]+\s*$`), and report the book's real unit (chapters, or sections/topics if that is how the book is organised).
+
 ---
 
 ## Step 3 — Identify the author's vocabulary
@@ -217,13 +223,19 @@ Score every candidate 0–2 on four axes. Keep candidates scoring **≥ 6/8**; c
 | **Prior-likely** — would a frontier model already know it? | obscure/new | known in niche | canonical (widely cited, decades old, in many other books) |
 | **Behaviour-changing** — does saying it imply a *different next action* for a coding agent? | no action implied | nudges style | changes what gets built first, how it is split, or what is rejected |
 
-Also tag each kept term with the **phase** where it bites: `plan` · `implement` · `review` · `refactor` · `design`. A balanced lexicon covers all five; if one phase is empty, say so rather than forcing a term in.
+Also tag each kept term with the **phase** where it bites: `plan` · `implement` · `review` · `refactor` · `design`. Give one **primary** phase; add at most one secondary in parentheses when the term clearly bites twice (`design (+review)`). A balanced lexicon covers all five; if one phase is empty, say so rather than forcing a term in.
+
+Selection rules that the score alone does not settle:
+- **Frequency is a gate, not an axis.** A term with ≤ 1 hit in the body is rejected — unless the author names it in a heading, a numbered tip/principle, or their own summary list; then keep it on its score and mark the frequency `title-only`.
+- **Merge near-duplicates.** When the author uses several names for one idea (*crash early* / *dead programs tell no lies*), keep one entry under the author's most-used phrase and list the others as aliases (`→ <kept term>`) in the Rejected section. Never merge terms from different authors (that is Fold-in's job, Step 7.5).
+- **Veto terms whose prior points the other way.** If a canonical term's common meaning pushes the agent toward the default the author argues *against* (e.g. *decorator*, *TDD* or *getters/setters* in an author who criticises them), do not keep it as a leading word, whatever its score — saying it would trigger the wrong behaviour. List it under `Prior points the other way`; it may become a row in `smells.md`.
 
 **Mode 2 stops here** with this report:
 ```
 ## Candidate lexicon — <Title> (<Author>)
-| Term | Score (N/D/P/B) | Phase | Chapters | Freq | One-line meaning |
-Rejected (score < 6): <comma list> — kept out because <one reason each, grouped>
+| Term | Score (N/D/P/B) | Phase | Chapters | Freq | Behaviour | Displaces |
+Rejected (score < 6): <comma list> — kept out because <one reason each, grouped>; aliases as `<term> → <kept term>`
+Prior points the other way: <terms vetoed by the rule above, or "none">
 Phases without a strong term: <list or "none">
 ```
 
@@ -312,7 +324,7 @@ Include the *tautological test* style smells if the book has them, and anything 
 
 Three paste-ready artefacts. Each starts with a one-line comment naming the book so future readers know where the words come from.
 
-- **`claude-md.md`** (≤ 300 tokens) — the block that goes into `CLAUDE.md` / `AGENTS.md`. Format: a heading `## Working vocabulary (<Author>)`, then 8–12 leading words, one line each: `**term** — <Behaviour line, compressed>`. Close with one sentence: "Use these terms in plans, commit messages and reviews; if a plan does not fit one of them, say which and why." The 300-token cap is a hard cap: this block is loaded on every session.
+- **`claude-md.md`** (≤ 300 tokens) — the block that goes into `CLAUDE.md` / `AGENTS.md`. Format: a heading `## Working vocabulary (<Author>)`, then 8–12 leading words, one line each: `**term** — <Behaviour line, compressed>`. Close with two lines: "Use these terms in plans, commit messages and reviews." and "**Mandatory:** before each step of any plan, write in brackets which term governs it, e.g. [deep module], or [none]. Before choosing a design, apply <the author's compare-alternatives term, if any>." The imperative line is required: in echo tests the passive version (vocabulary merely in context) produced no echoes and no change of plan, while the imperative one did. The 300-token cap is a hard cap: this block is loaded on every session.
 - **`grill.md`** (≤ 500 tokens) — 8–15 questions, phrased in the author's language, for a grilling/interview session before a large change. Each question names a leading word and asks the user to decide something ("Which single path is the tracer bullet for this feature, and what does 'it works' look like at the far end?"). Group by phase.
 - **`review.md`** (≤ 500 tokens) — a prompt for a review agent: load `principles.md` and `smells.md`, run every `Check`, report findings as *judgement calls in the author's terms*, never as hard violations; a documented repo standard overrides the book.
 
