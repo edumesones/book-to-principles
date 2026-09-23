@@ -1,6 +1,6 @@
-# Contributing to book-to-skill
+# Contributing to book-to-principles
 
-Thanks for helping improve book-to-skill. This project turns books and documents
+Thanks for helping improve book-to-principles. This project turns books and documents
 into structured agent skills; contributions that make extraction more robust,
 generation higher-signal, or the docs clearer are all welcome.
 
@@ -18,8 +18,8 @@ generation higher-signal, or the docs clearer are all welcome.
 ## Development
 
 ```bash
-git clone https://github.com/virgiliojr94/book-to-skill.git
-cd book-to-skill
+git clone https://github.com/edumesones/book-to-principles.git
+cd book-to-principles
 python3 -m venv .venv && . .venv/bin/activate
 pip install pytest ruff
 python3 scripts/extract.py --check     # see which optional extractors you have

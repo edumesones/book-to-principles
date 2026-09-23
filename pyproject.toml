@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "book-to-skill"
+name = "book-to-principles"
 version = "1.4.0"
-description = "Convert books and documents into structured, on-demand agent skills."
+description = "Distill a book into a shared vocabulary (leading words, principles, smells, CLAUDE.md snippets) for your coding agent."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }

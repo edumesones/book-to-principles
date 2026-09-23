@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract text from a document file for book-to-skill processing.
+Extract text from a document file for book-to-principles processing.
 Backward-compatible entrypoint wrapper.
 """
 

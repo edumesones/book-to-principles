@@ -4,7 +4,7 @@ This file is the repository-wide execution contract for coding agents.
 
 ## Project intent
 
-`book-to-skill` converts books and documents into structured, on-demand Agent Skills. The repository has two distinct halves:
+`book-to-principles` (a fork of `book-to-skill`) distills books and documents into a shared vocabulary for coding agents: leading words, principles, smells and CLAUDE.md snippets. The repository has two distinct halves:
 
 1. a deterministic Python extractor (`scripts/extract.py` -> `book_to_skill/`), and
 2. a spec-driven generator (`SKILL.md`) executed by an agent.
