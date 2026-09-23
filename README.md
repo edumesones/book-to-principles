@@ -6,6 +6,10 @@
 </p>
 
 <p align="center">
+  <b>English</b> · <a href="README.es.md">Español</a>
+</p>
+
+<p align="center">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
   <img src="https://img.shields.io/badge/status-pre--release-orange" alt="pre-release">
   <a href="https://github.com/virgiliojr94/book-to-skill"><img src="https://img.shields.io/badge/fork%20of-book--to--skill-lightgrey" alt="fork of book-to-skill"></a>
@@ -42,7 +46,7 @@ You didn't explain anything. You didn't write a paragraph about incremental deli
 
 ## Where the idea comes from
 
-This project grew out of an interview with **Matt Pocock** on *The Pragmatic Engineer Podcast* (2026). Pocock is the author of the [`mattpocock/skills`](https://github.com/mattpocock/skills) collection (`grill-me`, `domain-modeling`, `improve-codebase-architecture`, …). Several of his ideas, taken together, suggested a tool:
+This project grew out with **Matt Pocock** . Pocock is the author of the [`mattpocock/skills`](https://github.com/mattpocock/skills) collection (`grill-me`, `domain-modeling`, `improve-codebase-architecture`, …). Several of his ideas, taken together, suggested a tool:
 
 1. **It's a communication problem, not an intelligence problem.** The agent is capable enough. It just can't read your values. Every session starts from zero (*Memento-driven development*), so whatever you care about has to be said again, explicitly, and as cheaply as possible.
 2. **Leading words (*Leitwörter*).** Some terms (*tracer bullet*, *deep module*, *vertical slice*, *software entropy*, *ubiquitous language*) are already deep in the model's prior. Use them in a prompt or a skill and the agent starts echoing them in its reasoning. More importantly, **it changes what it does**: it stops building horizontal layers and cuts a thin path end-to-end.
