@@ -50,7 +50,24 @@ Three rules govern everything below:
 
 ## Skill Locations
 
-Same resolution as book-to-skill: generated skills go to `~/.agents/skills/<slug>/` by default; Claude Code gets a verified symlink from `~/.claude/skills/<slug>/`; Hermes and OpenClaw use their own roots; project-local roots only when asked. The converter's own `scripts/extract.py` is located with the same candidate list, with `book-to-principles` in place of `book-to-skill` in every path.
+<!-- Inlined from book-to-skill (commit 80ae087): this repo no longer ships that spec,
+     so "same as book-to-skill" pointed at nothing. -->
+This generator can run from multiple skill systems. When looking for its helper script or writing the generated skill, prefer these locations in order:
+
+1. GitHub Copilot CLI personal skills: `~/.copilot/skills/`
+2. Cross-agent personal skills (Copilot, Amp, Codex; OpenClaw with its default state): `~/.agents/skills/`
+3. Claude Code personal skills: `~/.claude/skills/`
+4. Project-local Copilot skills: `.github/skills/`
+5. Project-local Claude skills: `.claude/skills/`
+6. Project-local Amp / Copilot / OpenClaw skills: `.agents/skills/`
+7. Amp global skills: `~/.config/agents/skills/`
+8. Amp legacy global skills: `~/.config/amp/skills/`
+9. Hermes Agent personal skills: `$HERMES_HOME/skills/` (defaults to `~/.hermes/skills/`)
+10. Hermes Agent project skills: `.hermes/skills/` or `.agents/skills/`
+11. OpenClaw personal skills: `${OPENCLAW_STATE_DIR:-~/.openclaw}/skills/` (active state; `~/.agents/skills/` is shared only with the default state)
+12. OpenClaw project skills: `.agents/skills/` or `skills/`
+
+For **generated** principles skills, prefer the user-level cross-agent root `~/.agents/skills/`. Copilot CLI and Amp discover it natively; Claude Code needs a symlink from `~/.claude/skills/<slug>` (Step 10). Pick a host-private or project-local root only when the user explicitly asks for one. `BOOK_TO_SKILL_SCOPE=project` or `personal` can make that choice explicit for automation; do not ask a mandatory scope question merely because both scopes are available.
 
 ---
 
@@ -62,13 +79,105 @@ No arguments → stop:
 Parse: `INPUT_PATHS`, optional `SKILL_NAME` (last arg that is not a path and looks like a slug), optional `--bind PROJECT_ROOT`. If `SKILL_NAME` already exists under `SKILLS_HOME` and there are new sources → Mode 4; if `--bind` and no sources → Mode 3.
 
 ## Step 1 — Validate input
-Identical to book-to-skill Step 1 (supported extensions, expand globs, fail clearly if nothing found).
+Expand directories and globs to supported files: `.pdf`, `.epub`, `.docx`, `.txt`, `.md`, `.markdown`, `.rst`, `.adoc`, `.html`, `.htm`, `.rtf`, `.mobi`, `.azw`, `.azw3`. If none are found, stop with a clear error naming the paths you checked.
 
 ## Step 1.5 — Content type
-Ask once: technical / text-heavy / not sure → `BOOK_TYPE`. Same extractor choice as book-to-skill (Docling for technical). Most books worth distilling here are *text-heavy* (Pragmatic Programmer, Ousterhout, Evans, Fowler): say so and default to text unless the user objects.
+Ask once: "Technical (code, tables, formulas) / text-heavy (mostly prose) / not sure?" → `BOOK_TYPE=technical` for the first, `BOOK_TYPE=text` otherwise. Technical uses Docling (~1.5 s/page — warn the user); text uses the fastest extractor per format. Most books worth distilling here are *text-heavy* (Pragmatic Programmer, Ousterhout, Evans, Fowler): say so and default to text unless the user objects.
 
 ## Step 2 — Extract
-Run `scripts/extract.py $INPUT_PATHS --mode <BOOK_TYPE> --install-missing ask`, exactly as book-to-skill Step 2. Take `Workdir ->`, `Text ->`, `Meta ->` from the run output. Confirm the `SOURCE:` header matches what the user asked for.
+Locate this generator's `scripts/extract.py` and run it:
+
+```bash
+SCRIPT_PATH=""
+HERMES_HOME_RESOLVED="${HERMES_HOME:-$HOME/.hermes}"
+OPENCLAW_STATE_DIR_RESOLVED="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+HERMES_PROJECT_TRUSTED=false
+if [ -n "$PROJECT_ROOT" ] && [ "${HERMES_AGENT:-}" = true ] && \
+  command -v hermes >/dev/null 2>&1 && \
+  command -v python3 >/dev/null 2>&1 && \
+  hermes config get skills.trusted_project_dirs --json 2>/dev/null | PROJECT_ROOT="$PROJECT_ROOT" python3 -c 'import json, os, pathlib, sys; root=pathlib.Path(os.environ["PROJECT_ROOT"]).resolve(); sys.exit(not any(pathlib.Path(p).expanduser().resolve() == root for p in json.load(sys.stdin)))' 2>/dev/null
+then
+  HERMES_PROJECT_TRUSTED=true
+fi
+
+CANDIDATES=(
+  "$HOME/.copilot/skills/book-to-principles/scripts/extract.py"
+  "$HOME/.agents/skills/book-to-principles/scripts/extract.py"
+  "$HOME/.claude/skills/book-to-principles/scripts/extract.py"
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills/book-to-principles/scripts/extract.py"
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/book-to-principles/scripts/extract.py
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/*/book-to-principles/scripts/extract.py
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/*/*/book-to-principles/scripts/extract.py
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/*/*/*/book-to-principles/scripts/extract.py
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/*/*/*/*/book-to-principles/scripts/extract.py
+  "${OPENCLAW_STATE_DIR_RESOLVED}/skills"/*/*/*/*/*/*/book-to-principles/scripts/extract.py
+  "$HERMES_HOME_RESOLVED/skills/book-to-principles/scripts/extract.py"
+  "$HERMES_HOME_RESOLVED"/skills/*/book-to-principles/scripts/extract.py
+)
+if [ "${HERMES_AGENT:-}" != true ]; then
+  CANDIDATES+=(
+    ".github/skills/book-to-principles/scripts/extract.py"
+    ".claude/skills/book-to-principles/scripts/extract.py"
+    ".agents/skills/book-to-principles/scripts/extract.py"
+    "skills/book-to-principles/scripts/extract.py"
+    "skills"/*/book-to-principles/scripts/extract.py
+    "skills"/*/*/book-to-principles/scripts/extract.py
+    "skills"/*/*/*/book-to-principles/scripts/extract.py
+    "skills"/*/*/*/*/book-to-principles/scripts/extract.py
+    "skills"/*/*/*/*/*/book-to-principles/scripts/extract.py
+    "skills"/*/*/*/*/*/*/book-to-principles/scripts/extract.py
+  )
+  if [ -n "$PROJECT_ROOT" ]; then
+    CANDIDATES+=(
+      "$PROJECT_ROOT/skills/book-to-principles/scripts/extract.py"
+      "$PROJECT_ROOT/skills"/*/book-to-principles/scripts/extract.py
+      "$PROJECT_ROOT/skills"/*/*/book-to-principles/scripts/extract.py
+      "$PROJECT_ROOT/skills"/*/*/*/book-to-principles/scripts/extract.py
+      "$PROJECT_ROOT/skills"/*/*/*/*/book-to-principles/scripts/extract.py
+      "$PROJECT_ROOT/skills"/*/*/*/*/*/book-to-principles/scripts/extract.py
+      "$PROJECT_ROOT/skills"/*/*/*/*/*/*/book-to-principles/scripts/extract.py
+    )
+  fi
+fi
+CANDIDATES+=(
+  "$HOME/.config/agents/skills/book-to-principles/scripts/extract.py"
+  "$HOME/.config/amp/skills/book-to-principles/scripts/extract.py"
+)
+if [ "$HERMES_PROJECT_TRUSTED" = true ]; then
+  CANDIDATES=(
+    "$PROJECT_ROOT/.hermes/skills/book-to-principles/scripts/extract.py"
+    "$PROJECT_ROOT/.hermes/skills"/*/book-to-principles/scripts/extract.py
+    "$PROJECT_ROOT/.agents/skills/book-to-principles/scripts/extract.py"
+    "$PROJECT_ROOT/.agents/skills"/*/book-to-principles/scripts/extract.py
+    "${CANDIDATES[@]}"
+  )
+fi
+for candidate in "${CANDIDATES[@]}"
+do
+  if [ -f "$candidate" ]; then
+    SCRIPT_PATH="$candidate"
+    break
+  fi
+done
+
+if [ -z "$SCRIPT_PATH" ]; then
+  # Diagnostic: the install folder must be named book-to-principles (not book-to-skill).
+  echo "Could not find scripts/extract.py for book-to-principles — is the skill installed under a folder named 'book-to-principles'?" >&2
+  exit 1
+fi
+
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+fi
+
+"$PYTHON_BIN" "$SCRIPT_PATH" $INPUT_PATHS --mode <BOOK_TYPE> --install-missing ask
+```
+
+Setup or quality problem? `"$PYTHON_BIN" "$SCRIPT_PATH" --check` prints which extractors are installed and how to install the rest.
+
+Each run gets its own workdir (`<tempdir>/book_skill_work-<pid>/`, or `BOOK_SKILL_WORKDIR`). **Take `Workdir ->`, `Text ->`, `Meta ->` from the run output**, never a fixed path — concurrent runs must not read each other's output. Confirm the `SOURCE:` header of `full_text.txt` matches what the user asked for.
 
 ## Step 2.5 — Cost estimate
 Cheaper than book-to-skill: output is ~4–6K tokens total, not per-chapter. Report:
@@ -122,7 +231,28 @@ Phases without a strong term: <list or "none">
 
 ## Step 5 — Skill name and destination
 
-Slug: `{author-lastname}-principles` by default (`hunt-thomas-principles`, `ousterhout-principles`, `evans-ddd-principles`). Resolve `SKILLS_HOME` and host exactly as book-to-skill Step 5 (incl. the real-directory migration guard on Claude Code). If the slug exists: Fold-in / Overwrite / Rename.
+Slug: `{author-lastname}-principles` by default (`hunt-thomas-principles`, `ousterhout-principles`, `evans-ddd-principles`); a user-supplied `SKILL_NAME` wins.
+
+Choose `SKILLS_HOME`. First resolve **scope** from an explicit user request or `BOOK_TO_SKILL_SCOPE`, then probe **host**. A request for project-local/project output selects the project-local row; a request for personal/global output selects the personal row. If neither is requested, preserve the established personal default (`~/.agents/skills` for non-Hermes hosts). Do not ask a mandatory scope question solely because project-local roots exist. The selected root may still require host approval before writing.
+
+| Host agent | Personal skill root | Project-local root |
+|---|---|---|
+| **GitHub Copilot CLI** | `~/.agents/skills` (native) | `.github/skills` → `.claude/skills` → `.agents/skills` |
+| **Amp** | `~/.agents/skills` (native) | `.agents/skills` |
+| **OpenAI Codex** | `~/.agents/skills` (native; follows symlinks) | `.agents/skills` |
+| **Hermes Agent** | `$HERMES_HOME/skills/<category>` (defaults to `~/.hermes/skills/<category>`) | `.hermes/skills/<category>` → `.agents/skills` |
+| **Claude Code** | `~/.agents/skills` + symlink from `~/.claude/skills/<slug>` | `.claude/skills` |
+| **OpenClaw** | `${OPENCLAW_STATE_DIR:-~/.openclaw}/skills` (active state; `~/.agents/skills` only with default state) | `.agents/skills` → `skills/` |
+
+Rules:
+1. Personal install → `~/.agents/skills` (create if missing), unless it does not exist **and** the host's private root already holds skills; then use the private root and say why.
+2. Claude Code does not scan `~/.agents/skills` → Step 10 symlinks it.
+3. Hermes Agent keeps its own personal root (partitioned by category, no symlink). For project-local Hermes output, run `hermes skills trust <project-root>` and verify with `hermes skills list`.
+4. OpenClaw: `~/.agents/skills` is valid only when `OPENCLAW_STATE_DIR` is unset or the default; otherwise use the active state root. Verify with `openclaw skills list`.
+5. An explicitly requested host-private or project-local root is honoured; no symlink.
+6. If the choice depends on the host and you cannot identify it, ask: "Which agent are you running in — OpenClaw, Hermes Agent, GitHub Copilot CLI, Amp, Codex, or Claude Code?"
+
+On Claude Code, if `~/.claude/skills/<slug>` is a **real directory** (not a symlink), offer to migrate it into `~/.agents/skills/` before continuing. If `$SKILLS_HOME/<slug>/` exists: Fold-in (Mode 4) / Overwrite / Rename (`-2` or a new slug).
 
 ## Step 6 — Directory
 ```bash
@@ -244,7 +374,11 @@ Vocabulary and decision rules only, synthesised from the book — not the text, 
 ```
 
 ## Step 9.5 — Scan
-Run `tools/scan_generated_skill.py "$SKILLS_HOME/<slug>"` exactly as in book-to-skill. Stop on non-zero.
+```bash
+SKILL_CONVERTER_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+"$PYTHON_BIN" "$SKILL_CONVERTER_ROOT/tools/scan_generated_skill.py" "$SKILLS_HOME/<slug>"
+```
+Non-zero → stop and ask a human to review the file/line findings. Do not silently rewrite, load or publish the skill until they are resolved or explicitly accepted.
 
 ## Step 9.7 — Echo test (recommended, 5 minutes)
 
@@ -257,7 +391,28 @@ Pass: ≥ 3 leading words echoed in (1) that are absent in (2), **and** the plan
 
 ## Step 10 — Cleanup and report
 
-Symlink for Claude Code (read-back verified), remove this run's `WORKDIR`, and report:
+If the host is Claude Code and `SKILLS_HOME` is `~/.agents/skills`, link the skill in and **read the link back** — on Windows/MSYS `ln -s` may copy instead of link, or fail silently:
+
+```bash
+mkdir -p "$HOME/.claude/skills"
+LINK="$HOME/.claude/skills/<slug>"
+TARGET="$HOME/.agents/skills/<slug>"
+if [ -d "$LINK" ] && [ ! -L "$LINK" ]; then
+  CLAUDE_STATUS="skipped-realdir"   # migration declined; ln -sfn would nest the link inside it
+else
+  ln -sfn "$TARGET" "$LINK" 2>/dev/null || true
+  if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$TARGET" ]; then
+    CLAUDE_STATUS="linked"
+  elif [ -e "$LINK" ]; then
+    CLAUDE_STATUS="copy"
+  else
+    CLAUDE_STATUS="absent"
+  fi
+fi
+```
+Do not hard-fail on `copy`/`absent`: the skill exists at the hub; report that Claude Code will not see it until the link exists. Skip this for host-private or project-local roots.
+
+Then remove **only this run's** workdir (the `Workdir ->` path; never a directory you did not create): `rm -rf "$WORKDIR"`. Report:
 
 ```
 ✅ Principles skill created: $SKILLS_HOME/<slug>/
@@ -271,9 +426,40 @@ Use it:
   "review this with <slug>"                           → principles + smells over a diff
   "<slug> bind ./my-repo"                             → map the words to your project's own language
 Discoverable by: <from CLAUDE_STATUS, never from the fact that ln ran>
+
+Reload (if your agent doesn't auto-detect new skills):
+  GitHub Copilot CLI:  /skills reload
+  Claude Code:         restart the session
+  Amp:                 restart the session
+  Hermes Agent:         start a new session
+  OpenClaw:             openclaw skills list (new session if watcher disabled)
 ```
 
-Then, once, offer Step 8 (bind) if it did not run, and publishing (book-to-skill Step 11, same copyright gate: third-party books stay private).
+Fill "Discoverable by" from `CLAUDE_STATUS`: `linked` → "Copilot CLI, Amp, Codex (natively); Claude Code via symlink"; `skipped-realdir` / `copy` / `absent` → "Copilot CLI, Amp, Codex; **NOT** Claude Code — <reason and fix>"; Hermes/OpenClaw/private/project roots → only the host(s) that scan that root.
+
+Then, once, offer Step 8 (bind) if it did not run, and Step 11 (publish).
+
+## Step 11 — Publish to GitHub (optional)
+
+Offer once, only if the Step 9.5 scan passed: "Publish this skill to GitHub so it installs with `npx skills add`? (yes / skip)". Needs `gh` authenticated (`gh auth status`); without it, the user creates an empty repo in the web UI and you push to it — the visibility rule is the same.
+
+**Visibility is a separate closed question — never inferred from the publish offer or an earlier answer.** Ask on its own: "Private or public repository? Reply with one word: `private` or `public`." Use `--public` only when the reply *is* the bare word `public`. Substring matching is forbidden: a sentence about the source's licence ("it's public domain", "the book is publicly available") is not a visibility answer and resolves to private. A paraphrase, ambiguity or silence → re-ask once, then private, and say so.
+
+**Copyright gate:** the lexicon is paraphrased, but it still derives from the book. Skills from **third-party copyrighted books stay private**; public only for the user's own writing, openly licensed material, or content they confirm they may redistribute — state which case applies. Internal company docs stay private unless the user states they hold publication rights.
+
+If accepted:
+1. Add a `README.md` in the skill folder (never overwrite): title, "Generated from *<Title>* by <Author> with [book-to-principles](https://github.com/edumesones/book-to-principles)", the install command, file inventory, and a note that the content is a synthesized vocabulary, not the book text.
+2. **Nested-repo guard:** if `git -C "$SKILLS_HOME/<slug>" rev-parse --show-toplevel` succeeds, the folder is inside another repo — copy it to a scratch directory and publish from the copy (a `git init` in place would leave an embedded gitlink that fresh clones silently omit).
+
+```bash
+cd "$SKILLS_HOME/<slug>"
+git init -b main
+git add -A
+git commit -m "Add <slug> skill"
+gh repo create <repo_name> --private --source . --push
+# --private is the default; --public ONLY if the visibility answer was the bare word "public" AND the copyright gate allows it
+```
+3. Report the URL, visibility, and `npx skills add https://github.com/<owner>/<repo_name> --skill <slug>`.
 
 ---
 
