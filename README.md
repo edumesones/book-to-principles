@@ -46,7 +46,7 @@ You didn't explain anything. You didn't write a paragraph about incremental deli
 
 ## Where the idea comes from
 
-This project grew out with **Matt Pocock** . Pocock is the author of the [`mattpocock/skills`](https://github.com/mattpocock/skills) collection (`grill-me`, `domain-modeling`, `improve-codebase-architecture`, …). Several of his ideas, taken together, suggested a tool:
+This project grew out of ideas from **Matt Pocock**. Pocock is the author of the [`mattpocock/skills`](https://github.com/mattpocock/skills) collection (`grill-me`, `domain-modeling`, `improve-codebase-architecture`, …). Several of his ideas, taken together, suggested a tool:
 
 1. **It's a communication problem, not an intelligence problem.** The agent is capable enough. It just can't read your values. Every session starts from zero (*Memento-driven development*), so whatever you care about has to be said again, explicitly, and as cheaply as possible.
 2. **Leading words (*Leitwörter*).** Some terms (*tracer bullet*, *deep module*, *vertical slice*, *software entropy*, *ubiquitous language*) are already deep in the model's prior. Use them in a prompt or a skill and the agent starts echoing them in its reasoning. More importantly, **it changes what it does**: it stops building horizontal layers and cuts a thin path end-to-end.
