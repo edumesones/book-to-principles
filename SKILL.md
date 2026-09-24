@@ -46,6 +46,10 @@ Three rules govern everything below:
 **Trigger:** new sources + an existing principles skill slug/folder.
 **Action:** Steps 0–4 on the new sources, then merge into the existing lexicon (Step 7 rules), regenerate `SKILL.md` and snippets.
 
+### 5. Dictionary
+**Trigger:** "build the dictionary", "merge these lexicons", "add to the dictionary".
+**Action:** merge two or more per-book lexicons into one shared `engineering-lexicon` organised by decision type, with one always-on block. Follow `DICTIONARY.md` (D1–D9), then Steps 5–10 to install it. Preferred over one skill per book once there are two or more books.
+
 ---
 
 ## Skill Locations
